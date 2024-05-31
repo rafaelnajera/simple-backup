@@ -1,0 +1,98 @@
+<?php
+/*
+ *  Copyright (C) 2024 Rafael Nájera
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+return (new SimpleBackupTool())->main($argc, $argv);
+
+
+class SimpleBackupTool {
+
+    const Usage = 'simple_backup [options] folder1-source folder1-dest [folder2-source folder2-dest ...]';
+
+    const OptionIgnoreMac = '--ignore-mac-stuff';
+    const OptionIgnoreFile = '--ignore';
+
+    public function  main(int $argc, array $argv) : int {
+        if ($argc < 2) {
+            print self::Usage . PHP_EOL;
+            return -1;
+        }
+
+        try {
+            [ $options, $folderPairs ] = $this->parseCommandLine($argc, $argv);
+        } catch( \InvalidArgumentException $e ) {
+            print "ERROR: " . $e->getMessage() . PHP_EOL;
+            return -1;
+        }
+
+        print_r($options);
+        print_r($folderPairs);
+
+        return 0;
+
+    }
+
+    /**
+     * Returns an [ options, folderPairs] tuple
+     *
+     * options is itself an array of tuples of the form [ option, param1, param2, ...]
+     *
+     *
+     * @param int $argc
+     * @param array $argv
+     * @return array
+     */
+    private function parseCommandLine(int $argc, array $argv) : array {
+
+
+        $folderPairs = [];
+        $options = [];
+        $currentFolderPair = [];
+        for ($i = 1; $i < $argc; $i++) {
+            if (str_starts_with($argv[$i], '--')) {
+                switch($argv[$i]) {
+                    case self::OptionIgnoreMac:
+                        $options[] = [ self::OptionIgnoreMac];
+                        break;
+
+                    case self::OptionIgnoreFile:
+                        if (!isset($argv[$i + 1])) {
+                            throw new InvalidArgumentException("Missing file to ignore after argument #" . $i +1);
+                        }
+                        $options[] = [ self::OptionIgnoreFile, $argv[$i + 1]];
+                        $i++;
+                        break;
+
+                    default:
+                        throw new InvalidArgumentException("Unknown option " . $argv[$i]);
+                }
+            } else {
+                $currentFolderPair[] = $argv[$i];
+                if (count($currentFolderPair) === 2) {
+                    $folderPairs[] = $currentFolderPair;
+                    $currentFolderPair = [];
+                }
+            }
+        }
+        if (count($currentFolderPair) === 1) {
+            throw new InvalidArgumentException("Missing destination folder for '" . $currentFolderPair[0] . "'");
+        }
+        return [ $options, $folderPairs];
+    }
+}
+
